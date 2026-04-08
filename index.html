@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACS Console Plugin - Architecture & Development</title>
+
+  <!-- reveal.js -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/night.css" id="theme">
+
+  <!-- Syntax highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+
+  <style>
+    :root {
+      --r-heading-font: system-ui, -apple-system, sans-serif;
+      --r-main-font: system-ui, -apple-system, sans-serif;
+      --r-code-font: 'JetBrains Mono', 'Fira Code', monospace;
+      --accent: #5bc0de;
+      --accent-warm: #e8a838;
+      --accent-green: #5cb85c;
+      --accent-red: #ee6352;
+    }
+
+    .reveal h1, .reveal h2, .reveal h3 {
+      text-transform: none;
+    }
+
+    .reveal pre {
+      width: 100%;
+      font-size: 0.48em;
+    }
+
+    .reveal pre code {
+      max-height: 520px;
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .reveal .small-code pre {
+      font-size: 0.42em;
+    }
+
+    .reveal .tiny-code pre {
+      font-size: 0.36em;
+    }
+
+    .accent { color: var(--accent); }
+    .accent-warm { color: var(--accent-warm); }
+    .accent-green { color: var(--accent-green); }
+    .accent-red { color: var(--accent-red); }
+    .dim { opacity: 0.5; }
+
+    .reveal ul { list-style: none; padding-left: 0; }
+    .reveal ul li::before {
+      content: '▸ ';
+      color: var(--accent);
+    }
+    .reveal ul ul li::before {
+      content: '· ';
+      color: var(--accent-warm);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2em;
+      text-align: left;
+    }
+
+    .reveal .slide-number {
+      font-size: 14px;
+    }
+
+    .reveal section .fragment.fade-in-then-semi-out.visible:not(.current-fragment) {
+      opacity: 0.3;
+    }
+
+    .demo-banner {
+      background: linear-gradient(135deg, #2a5298, #1e3c72);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 2em;
+      margin: 1em auto;
+      max-width: 600px;
+    }
+    .demo-banner h2 { margin-bottom: 0.3em; }
+
+    .mermaid {
+      font-size: 0.7em;
+    }
+    .mermaid svg {
+      max-height: 500px;
+    }
+
+    .version-table {
+      font-size: 0.55em;
+      border-collapse: collapse;
+      margin: 0 auto;
+    }
+    .version-table th, .version-table td {
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      text-align: left;
+    }
+    .version-table th {
+      background: rgba(255,255,255,0.1);
+    }
+    .version-table .warn {
+      color: var(--accent-warm);
+    }
+    .version-table .ok {
+      color: var(--accent-green);
+    }
+    .version-table .danger {
+      color: var(--accent-red);
+    }
+
+    .file-tree {
+      font-family: var(--r-code-font);
+      font-size: 0.48em;
+      line-height: 1.7;
+      text-align: left;
+      background: rgba(0,0,0,0.3);
+      padding: 1em 1.5em;
+      border-radius: 8px;
+    }
+    .file-tree .highlight {
+      color: var(--accent);
+      font-weight: bold;
+    }
+    .file-tree .comment {
+      color: rgba(255,255,255,0.4);
+    }
+    .file-tree li::before { content: '' !important; }
+    .file-tree ul { padding-left: 1.5em; }
+
+    .callout {
+      padding: 0.8em;
+      border-radius: 4px;
+      margin-top: 1em;
+    }
+    .callout-warn {
+      background: rgba(232,168,56,0.12);
+      border-left: 3px solid var(--accent-warm);
+    }
+    .callout-danger {
+      background: rgba(238,99,82,0.15);
+      border-left: 3px solid var(--accent-red);
+    }
+    .callout-info {
+      background: rgba(91,192,222,0.12);
+      border-left: 3px solid var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ==================== TITLE ==================== -->
+      <section>
+        <h1 style="font-size: 1.6em;">ACS Console Plugin</h1>
+        <h3 class="accent" style="font-size: 0.9em;">Architecture, Development & Compatibility</h3>
+        <p class="dim" style="font-size: 0.6em; margin-top: 2em;">UI Team Knowledge Share</p>
+      </section>
+
+      <!-- ==================== AGENDA ==================== -->
+      <section>
+        <h2>Agenda</h2>
+        <ol style="font-size: 0.8em; list-style: decimal; padding-left: 1.5em;">
+          <li style="margin-bottom: 0.3em;">What is the console plugin &amp; why?</li>
+          <li style="margin-bottom: 0.3em;">Webpack Module Federation 101</li>
+          <li style="margin-bottom: 0.3em;">Our codebase structure</li>
+          <li style="margin-bottom: 0.3em;">Authentication, RBAC &amp; request flow</li>
+          <li style="margin-bottom: 0.3em;">Dev environment &amp; demo</li>
+          <li style="margin-bottom: 0.3em;">Adding new plugin features &amp; demo</li>
+          <li style="margin-bottom: 0.3em;">Compatibility &amp; long-term support</li>
+        </ol>
+      </section>
+
+      <!-- ==================== SECTION 1: WHAT & WHY ==================== -->
+      <section>
+        <section>
+          <h2>What is the Console Plugin?</h2>
+          <p style="font-size: 0.75em;">
+            ACS security data embedded <span class="accent">directly in OpenShift Console</span>
+          </p>
+          <ul style="font-size: 0.7em;">
+            <li>Security tabs on Deployments, StatefulSets, DaemonSets, CronJobs, Namespaces, Projects</li>
+            <li>Top-level <code>/acs/security/vulnerabilities</code> route</li>
+            <li>Image &amp; CVE detail pages</li>
+            <li>No separate login &mdash; uses the user's existing OCP session</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Why?</h2>
+          <ul style="font-size: 0.75em;">
+            <li>OCP users want security data <em>in context</em></li>
+            <li>Viewing a Deployment? See its CVEs right there</li>
+            <li>No app-switching, no separate auth</li>
+            <li>Same code as the standalone UI &mdash; not a separate product</li>
+          </ul>
+        </section>
+      </section>
+
+      <!-- ==================== SECTION 2: MODULE FEDERATION ==================== -->
+      <section>
+        <section>
+          <h2>Webpack Module Federation</h2>
+          <h3 class="accent" style="font-size: 0.7em;">The technology behind dynamic plugins</h3>
+        </section>
+
+        <section>
+          <h3>The Requirements</h3>
+          <p style="font-size: 0.7em;">
+            Embedding our UI inside another React app at runtime requires solving three problems:
+          </p>
+          <ul style="font-size: 0.65em; margin-top: 0.8em;">
+            <li><strong class="accent">Shared dependencies</strong> &mdash; React, Redux, router, etc. must exist
+              as a single instance in the browser. Two copies of React = broken context, broken hooks.</li>
+            <li><strong class="accent">Exposed integration points</strong> &mdash; The host needs a way to discover
+              and load our components (routes, tabs, cards) without bundling them at build time.</li>
+            <li><strong class="accent">Cohesive UI</strong> &mdash; Our components render inside the console's
+              layout, share its styling (PatternFly), and participate in its routing.</li>
+          </ul>
+          <p class="fragment dim" style="font-size: 0.6em; margin-top: 1em;">
+            Webpack Module Federation solves all three.
+          </p>
+        </section>
+
+        <section>
+          <h3>Host &amp; Remote</h3>
+          <div class="two-col" style="font-size: 0.65em;">
+            <div>
+              <h4 class="accent">Host</h4>
+              <p>The container app that loads remotes at runtime</p>
+              <p class="dim">OpenShift Console is the host</p>
+            </div>
+            <div>
+              <h4 class="accent-warm">Remote</h4>
+              <p>A separately-built bundle that exposes modules</p>
+              <p class="dim">Our plugin is the remote</p>
+            </div>
+          </div>
+          <div class="fragment" style="margin-top: 1.5em;">
+            <p style="font-size: 0.6em;">
+              At build time, the remote generates a <code class="accent">remoteEntry.js</code> manifest.<br>
+              At runtime, the host fetches this manifest and dynamically loads only the chunks it needs.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h3>Shared Dependencies at Build Time</h3>
+          <p style="font-size: 0.65em;">
+            The host declares a list of shared modules. When webpack builds a remote:
+          </p>
+          <ul style="font-size: 0.6em; margin-top: 0.5em;">
+            <li>Any <code>import</code> of a shared module becomes an <strong>async external reference</strong>
+              instead of being bundled into the chunk</li>
+            <li>Our plugin's bundle <strong>literally does not contain</strong>
+              React, Redux, react-router, etc.</li>
+          </ul>
+          <div class="callout callout-danger" style="margin-top: 1em;">
+            <p style="font-size: 0.6em; margin: 0;">
+              <strong>This is the fundamental constraint:</strong> our code is compiled against one version
+              of these libraries but <strong>runs against whatever version the console ships</strong>.
+              Version mismatches can cause silent breakage.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h3>How Console Discovers Plugins</h3>
+          <pre><code class="language-yaml" data-trim>
+apiVersion: console.openshift.io/v1
+kind: ConsolePlugin
+metadata:
+  name: advanced-cluster-security
+spec:
+  displayName: Red Hat Advanced Cluster Security
+  backend:
+    type: Service
+    service:
+      name: sensor-proxy
+      namespace: stackrox
+      port: 443
+      basePath: /proxy/central/static/ocp-plugin
+          </code></pre>
+          <p style="font-size: 0.55em;" class="dim">
+            Console reads this CRD &rarr; fetches manifest from the service &rarr; loads our bundles
+          </p>
+        </section>
+
+        <section>
+          <h3>Our Webpack Config</h3>
+          <p style="font-size: 0.6em;">
+            We don't configure <code>ModuleFederationPlugin</code> directly.<br>
+            The SDK provides <code class="accent">ConsoleRemotePlugin</code> which wraps it.
+          </p>
+          <div class="small-code">
+          <pre><code class="language-javascript" data-trim>
+// webpack.ocp-plugin.config.js
+new ConsoleRemotePlugin({
+    pluginMetadata: {
+        name: 'advanced-cluster-security',
+        version: getProductVersion(),
+        exposedModules: {
+            context: './ConsolePlugin/PluginProvider',
+            SecurityVulnerabilitiesPage: './ConsolePlugin/SecurityVulnerabilitiesPage/...',
+            WorkloadSecurityTab: './ConsolePlugin/WorkloadSecurityTab/...',
+            CveDetailPage: './ConsolePlugin/CveDetailPage/...',
+            ImageDetailPage: './ConsolePlugin/ImageDetailPage/...',
+            // ...
+        },
+        dependencies: {
+            '@console/pluginAPI': '>=4.19.0',
+        },
+    },
+    extensions: [
+        { type: 'console.context-provider', ... },
+        { type: 'console.page/route', ... },
+        { type: 'console.tab/horizontalNav', ... },
+        // ...
+    ],
+})
+          </code></pre>
+          </div>
+          <p style="font-size: 0.55em;">
+            Extension types reference:
+            <a href="https://github.com/openshift/console/tree/main/frontend/packages/console-dynamic-plugin-sdk/docs" target="_blank">
+              Console SDK extension docs
+            </a>
+          </p>
+        </section>
+      </section>
+
+      <!-- ==================== SECTION 3: CODEBASE STRUCTURE ==================== -->
+      <section>
+        <section>
+          <h2>Codebase Structure</h2>
+          <h3 class="accent" style="font-size: 0.7em;">Two build targets, one codebase</h3>
+        </section>
+
+        <section>
+          <h3>Two Build Pipelines</h3>
+          <div class="two-col" style="font-size: 0.65em;">
+            <div>
+              <h4 class="accent">Standalone</h4>
+              <ul>
+                <li>Entry: <code>src/index.tsx</code></li>
+                <li>Bundler: Vite</li>
+                <li><code>npm run start</code></li>
+                <li>Full ACS UI</li>
+              </ul>
+            </div>
+            <div>
+              <h4 class="accent-warm">Plugin</h4>
+              <ul>
+                <li>Entry: exposed modules</li>
+                <li>Bundler: Webpack (MF)</li>
+                <li><code>npm run start:ocp-plugin</code></li>
+                <li>Subset of UI surfaces</li>
+              </ul>
+            </div>
+          </div>
+          <p class="fragment" style="font-size: 0.6em; margin-top: 1em;">
+            Shared code: <code>Containers/</code>, <code>providers/</code>, <code>services/</code>, <code>hooks/</code><br>
+            <span class="dim">~98% reused, ~2% plugin-specific</span>
+          </p>
+        </section>
+
+        <section>
+          <h3>Directory Layout</h3>
+          <div class="file-tree">
+            <pre style="background: none; box-shadow: none; margin: 0;">src/
+├── index.tsx                          <span class="comment"># Standalone entry (Vite)</span>
+├── <span class="highlight">ConsolePlugin/</span>                     <span class="comment"># Plugin-specific (~2%)</span>
+│   ├── <span class="highlight">PluginProvider.tsx</span>             <span class="comment"># Sets up axios adapter, wraps providers</span>
+│   ├── consoleFetchAxiosAdapter.ts   <span class="comment"># Bridges axios → consoleFetch</span>
+│   ├── ScopeContext.tsx              <span class="comment"># Tracks active namespace</span>
+│   ├── PluginContent.tsx             <span class="comment"># Permission gate</span>
+│   ├── hooks/                        <span class="comment"># Plugin-specific hooks</span>
+│   ├── Components/                   <span class="comment"># Plugin-specific UI</span>
+│   │
+│   │   <span class="comment"># Exposed modules (thin wrappers, 15-50 LOC each):</span>
+│   ├── SecurityVulnerabilitiesPage/  <span class="comment"># /acs/security/vulnerabilities</span>
+│   ├── WorkloadSecurityTab/          <span class="comment"># Tab on Deployments, etc.</span>
+│   ├── CveDetailPage/               <span class="comment"># CVE detail route</span>
+│   └── ...
+│
+├── Containers/Vulnerabilities/       <span class="comment"># Shared business logic</span>
+├── providers/                        <span class="comment"># Shared context providers</span>
+├── services/                         <span class="comment"># Shared API services</span>
+└── hooks/                            <span class="comment"># Shared hooks</span></pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>Sharing Code Between Modes</h3>
+          <p style="font-size: 0.65em;">
+            Plugin entry points are <span class="accent">thin wrappers</span> around large shared components.
+            <br>e.g. <code>DeploymentPageVulnerabilities</code> &mdash; the full vulnerability table with
+            filtering, sorting, pagination, column management, and CVE detail links.
+          </p>
+          <div class="fragment" style="margin-top: 1em;">
+            <p style="font-size: 0.65em;">The wrapper customizes behavior through three patterns:</p>
+            <ul style="font-size: 0.6em;">
+              <li><strong>Props</strong> &mdash; e.g. <code>showVulnerabilityStateTabs={false}</code> to hide
+                standalone-only UI</li>
+              <li><strong>React Context</strong> &mdash; e.g. <code>WorkloadCveViewContext</code> provides
+                configuration that shared components read via <code>useContext</code>,
+                such as building URLs for intra-app links</li>
+              <li><strong>Composition</strong> &mdash; wrapping shared components with plugin-specific
+                chrome like <code>NamespaceBar</code>, loading states, or error boundaries</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h3>Example: Workload Security Tab</h3>
+          <div class="small-code">
+          <pre><code class="language-tsx" data-trim>
+// ConsolePlugin/WorkloadSecurityTab/WorkloadSecurityTab.tsx
+export function WorkloadSecurityTab() {
+    useAnalyticsPageView();
+
+    const context = useDefaultWorkloadCveViewContext(); // ← context DI
+    const pagination = useURLPagination(DEFAULT_VM_PAGE_SIZE);
+    const { searchFilter, setSearchFilter } = useURLSearch();
+    const { ns, name } = useParams();
+    const { id, isLoading, error } = useWorkloadId({ ns, name });
+
+    return (
+        // Context provides config that shared components consume
+        &lt;WorkloadCveViewContext.Provider value={context}&gt;
+            {isLoading && &lt;Spinner /&gt;}
+            {error && &lt;EmptyStateTemplate ... /&gt;}
+            {id && (
+                // Large shared component — full vuln table w/ filtering,
+                // sorting, pagination, column management
+                &lt;DeploymentPageVulnerabilities
+                    deploymentId={id}
+                    pagination={pagination}
+                    showVulnerabilityStateTabs={false} // ← prop DI
+                    vulnerabilityState="OBSERVED"
+                    searchFilter={searchFilter}
+                    setSearchFilter={setSearchFilter}
+                /&gt;
+            )}
+        &lt;/WorkloadCveViewContext.Provider&gt;
+    );
+}
+          </code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>The Axios Adapter</h3>
+          <p style="font-size: 0.7em;">
+            <code>consoleFetchAxiosAdapter.ts</code> overrides <code>axios.defaults.adapter</code>
+            to route requests through the console's <code>consoleFetch</code>.
+          </p>
+          <p style="font-size: 0.65em; margin-top: 0.8em;">
+            Shared services call <code>axios</code> identically in both modes.
+          </p>
+        </section>
+      </section>
+
+      <!-- ==================== SECTION 4: AUTH FLOW (ANIMATED) ==================== -->
+      <section>
+        <section>
+          <h2>Authentication, RBAC &amp; Request Flow</h2>
+          <h3 class="accent" style="font-size: 0.7em;">No separate login required</h3>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Step 1: Component makes a request</h3>
+          <div class="mermaid">
+            <pre>
+sequenceDiagram
+    participant C as Plugin Component
+    participant A as Axios
+    C->>A: axios.get('/v1/deployments')
+    Note over A: Standard axios call, same code as standalone
+            </pre>
+          </div>
+          <p style="font-size: 0.6em;">
+            The component doesn't know it's running inside the console.<br>
+            It uses the same <code>axios</code> instance as the standalone app.
+          </p>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Step 2: Adapter intercepts &amp; adds auth</h3>
+          <div class="mermaid">
+            <pre>
+sequenceDiagram
+    participant A as Axios
+    participant AD as consoleFetchAxiosAdapter
+    participant CF as consoleFetch (SDK)
+    A->>AD: adapter(config)
+    Note over AD: Injects ACS-AUTH-NAMESPACE-SCOPE header from active namespace
+    AD->>CF: consoleFetch(url, options)
+    Note over CF: SDK adds auth cookies + X-CSRFToken
+            </pre>
+          </div>
+          <p style="font-size: 0.6em;">
+            <code>PluginProvider</code> overrides <code>axios.defaults.adapter</code><br>
+            so all requests go through <code>consoleFetch</code> instead of <code>XMLHttpRequest</code>.
+          </p>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Step 3: Console proxies to sensor-proxy</h3>
+          <div class="mermaid">
+            <pre>
+sequenceDiagram
+    participant CF as consoleFetch
+    participant CP as Console Proxy
+    participant SP as sensor-proxy
+    CF->>CP: /api/proxy/plugin/advanced-cluster-security/api-service/...
+    Note over CP: Console backend resolves user session to bearer token
+    CP->>SP: Request + Authorization: Bearer ...
+    Note over SP: Receives the user's OCP bearer token
+            </pre>
+          </div>
+          <p style="font-size: 0.6em;">
+            Console auth uses cookies in the browser. The console backend resolves the session
+            and adds a bearer token on the backend-to-backend proxy hop.<br>
+            <span class="dim">In dev: the token from <code>oc login --web</code>.
+            In prod: the token from the user's authenticated OpenShift session.</span>
+          </p>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Step 4: sensor-proxy RBAC</h3>
+          <div class="mermaid">
+            <pre>
+sequenceDiagram
+    participant SP as sensor-proxy
+    participant K8s as Kubernetes API
+    participant C as Central
+
+    SP->>K8s: TokenReview (validate bearer token)
+    K8s-->>SP: User identity (username, groups, UID)
+
+    SP->>K8s: SubjectAccessReview
+    Note over SP,K8s: Can user get/list deployments, pods, statefulsets, etc. in requested namespace?
+    K8s-->>SP: Allowed / Denied
+
+    SP->>C: Request + dynamic access scope
+    Note over C: Read-only Deployment + Image permissions, scoped to namespace
+            </pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>sensor-proxy RBAC Model</h3>
+          <ul style="font-size: 0.6em;">
+            <li><strong class="accent">Authentication</strong>: validates the OCP bearer token via Kubernetes
+              <code>TokenReview</code> (cached for 3 min)</li>
+            <li><strong class="accent">Authorization</strong>: issues a <code>SubjectAccessReview</code> checking
+              <code>get</code> + <code>list</code> on deployment-like resources (Deployments, StatefulSets,
+              Pods, CronJobs, etc.) in the requested namespace</li>
+            <li><strong class="accent">Scoping</strong>: creates a <em>dynamic access scope</em> on the forwarded
+              request &mdash; either full-cluster or namespace-restricted</li>
+            <li><strong class="accent">Least privilege</strong>: tokens issued to Central are restricted to
+              <strong>read-only</strong> Deployment + Image permissions only</li>
+          </ul>
+          <div class="callout callout-info" style="margin-top: 0.8em;">
+            <p style="font-size: 0.55em; margin: 0;">
+              <strong>Namespace scope header:</strong>
+              <code>ACS-AUTH-NAMESPACE-SCOPE</code> = specific namespace, <code>*</code> for all, or absent for
+              endpoints that don't need scoping. The SSAR check and dynamic scope both key off this header.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h3>Full Picture</h3>
+          <div class="mermaid">
+            <pre>
+sequenceDiagram
+    participant P as Plugin
+    participant AX as Adapter
+    participant CF as consoleFetch
+    participant CP as Proxy
+    participant SP as sensor-proxy
+    participant K as K8s
+    participant C as Central
+
+    P->>AX: axios.get('/v1/...')
+    AX->>AX: Add scope header
+    AX->>CF: consoleFetch(url)
+    CF->>CF: Add cookies + CSRF
+    CF->>CP: /api/proxy/plugin/...
+    CP->>SP: Forward + auth
+    SP->>K: TokenReview + SSAR
+    K-->>SP: Identity + authz
+    SP->>C: Dynamic access scope
+    C-->>SP: Filtered data
+    SP-->>P: Response
+            </pre>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== SECTION 5: DEV ENVIRONMENT & DEMO ==================== -->
+      <section>
+        <section>
+          <h2>Development Environment</h2>
+        </section>
+
+        <section>
+          <h3>Dev Architecture</h3>
+          <div class="mermaid">
+            <pre>
+graph LR
+    A[Browser :9000] --> B[Console Container]
+    B --> C[Plugin Dev Server :9001]
+    B --> D[sensor-proxy LoadBalancer]
+    D --> E[Central]
+
+    style A fill:#1a1a2e,stroke:#5bc0de,color:#fff
+    style B fill:#1a1a2e,stroke:#e8a838,color:#fff
+    style C fill:#1a1a2e,stroke:#5cb85c,color:#fff
+    style D fill:#1a1a2e,stroke:#ee6352,color:#fff
+    style E fill:#1a1a2e,stroke:#888,color:#fff
+            </pre>
+          </div>
+          <ul style="font-size: 0.6em;">
+            <li><span class="accent">Console container</span> &mdash; local OCP console (podman/docker)</li>
+            <li><span class="accent-green">Plugin dev server</span> &mdash; webpack on :9001 with HMR</li>
+            <li><span class="accent-red">sensor-proxy LB</span> &mdash; exposed via LoadBalancer for local dev</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Setup Steps</h3>
+          <pre><code class="language-bash" data-trim data-noescape>
+# Terminal 1: Start the plugin dev server
+npm run start:ocp-plugin
+
+# Terminal 2: Login and start the console
+oc login --web
+./scripts/start-ocp-console.sh
+
+# Visit http://localhost:9000
+          </code></pre>
+          <div class="fragment callout callout-danger">
+            <p style="font-size: 0.6em; margin: 0;">
+              <strong class="accent-red">Security warning:</strong>
+              <code>start-ocp-console.sh</code> creates a LoadBalancer that exposes
+              <code>sensor-proxy</code> to the internet. Only use on dev clusters.
+              Auto-cleans up after 8 hours.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <div class="demo-banner">
+            <h2>Live Demo</h2>
+            <p style="font-size: 0.7em;">Start the plugin dev server and console</p>
+            <p class="dim" style="font-size: 0.55em;">
+              <code>npm run start:ocp-plugin</code> &rarr;
+              <code>./scripts/start-ocp-console.sh</code>
+            </p>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== SECTION 6: ADDING FEATURES ==================== -->
+      <section>
+        <section>
+          <h2>Adding Plugin Features</h2>
+        </section>
+
+        <section>
+          <h3>Decision Tree</h3>
+          <div style="font-size: 0.7em; text-align: left; max-width: 700px; margin: 0 auto;">
+            <p>
+              <strong class="accent">Modifying an existing plugin view?</strong><br>
+              <span class="dim">&rarr;</span> Edit shared code in <code>Containers/</code>. It works in both modes.
+            </p>
+            <div class="fragment">
+              <p style="margin-top: 1em;">
+                <strong class="accent-warm">Adding a new extension?</strong><br>
+                <span class="dim">&rarr;</span> Three steps:
+              </p>
+              <ol style="font-size: 0.85em; padding-left: 1.5em; list-style: decimal;">
+                <li>Create entry point in <code>ConsolePlugin/</code></li>
+                <li>Register in <code>exposedModules</code></li>
+                <li>Add console extension(s)</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Example: Security Overview Dashboard Tab</h3>
+          <p style="font-size: 0.65em;">
+            Let's add a <span class="accent">Security</span> tab to the main cluster overview dashboard
+            using <code>console.dashboards/tab</code> + <code>console.dashboards/card</code>.
+          </p>
+        </section>
+
+        <section>
+          <h3>Step 1: Create the Card Component</h3>
+          <div class="small-code">
+          <pre><code class="language-tsx" data-trim>
+// src/ConsolePlugin/OverviewSecurityCard/OverviewSecurityCard.tsx
+
+import { Card, CardHeader, CardTitle, CardBody } from '@patternfly/react-core';
+
+export function OverviewSecurityCard() {
+    return (
+        &lt;Card&gt;
+            &lt;CardHeader&gt;
+                &lt;CardTitle&gt;Security Overview&lt;/CardTitle&gt;
+            &lt;/CardHeader&gt;
+            &lt;CardBody&gt;
+                Hello from ACS!
+            &lt;/CardBody&gt;
+        &lt;/Card&gt;
+    );
+}
+          </code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>Step 2: Register the Module</h3>
+          <div class="small-code">
+          <pre><code class="language-javascript" data-trim>
+// webpack.ocp-plugin.config.js
+
+exposedModules: {
+    context: './ConsolePlugin/PluginProvider',
+    // ... existing modules ...
+
+    // New dashboard card
+    OverviewSecurityCard: './ConsolePlugin/OverviewSecurityCard/OverviewSecurityCard',
+},
+          </code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>Step 3: Add Console Extensions</h3>
+          <div class="small-code">
+          <pre><code class="language-javascript" data-trim>
+// webpack.ocp-plugin.config.js — extensions array
+
+// Register a new dashboard tab
+{
+    type: 'console.dashboards/tab',
+    properties: {
+        id: 'acs-security-overview',
+        navSection: 'home',
+        title: 'Security',
+    },
+},
+
+// Add a card to that tab
+{
+    type: 'console.dashboards/card',
+    properties: {
+        tab: 'acs-security-overview',
+        position: 'LEFT',
+        component: { $codeRef: 'OverviewSecurityCard.OverviewSecurityCard' },
+    },
+},
+          </code></pre>
+          </div>
+          <p style="font-size: 0.55em;">
+            Full list of extension types:
+            <a href="https://github.com/openshift/console/tree/main/frontend/packages/console-dynamic-plugin-sdk/docs" target="_blank">
+              Console SDK extension docs
+            </a>
+          </p>
+        </section>
+
+        <section>
+          <h3>E2E Testing</h3>
+          <pre><code class="language-bash" data-trim>
+# Local dev (auth disabled via bridge):
+OCP_BRIDGE_AUTH_DISABLED=true \
+  ORCHESTRATOR_FLAVOR=openshift \
+  npm run cypress-open:ocp
+          </code></pre>
+          <div class="callout callout-info" style="margin-top: 1em;">
+            <p style="font-size: 0.55em; margin: 0;">
+              <strong>In CI</strong>, tests run against a deployed console with real auth.
+              Credentials and URLs are set as environment variables in the pipeline &mdash;
+              you won't typically run that mode locally.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <div class="demo-banner">
+            <h2>Live Demo</h2>
+            <p style="font-size: 0.7em;">Adding the Security Overview tab</p>
+            <p class="dim" style="font-size: 0.55em;">
+              Create the component &rarr; register module &rarr; add extensions &rarr; see it live
+            </p>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== SECTION 7: COMPATIBILITY ==================== -->
+      <section>
+        <section>
+          <h2>Compatibility &amp; Long-Term Support</h2>
+          <h3 class="accent" style="font-size: 0.7em;">The console controls our runtime</h3>
+        </section>
+
+        <section>
+          <h3>Shared Singleton Modules</h3>
+          <p style="font-size: 0.6em;">
+            Console provides these as singletons. Our bundles don't contain them &mdash;
+            <br>the console's version is what runs, regardless of our <code>package.json</code>.
+          </p>
+          <table class="version-table" style="margin-top: 1em;">
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Console 4.19</th>
+                <th>Our package.json</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>react</code></td>
+                <td>^17.0.1</td>
+                <td>^18.2.0</td>
+                <td class="warn">&#9888;</td>
+              </tr>
+              <tr>
+                <td><code>react-router-dom</code></td>
+                <td>5.3.x</td>
+                <td>^5.3.4</td>
+                <td class="ok">&#10003;</td>
+              </tr>
+              <tr>
+                <td><code>react-redux</code></td>
+                <td>7.2.9</td>
+                <td>^7.2.6</td>
+                <td class="ok">&#10003;</td>
+              </tr>
+              <tr>
+                <td><code>redux</code></td>
+                <td>4.0.1</td>
+                <td>^4.1.2</td>
+                <td class="ok">&#10003;</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h3>React 17 at Runtime</h3>
+          <p style="font-size: 0.65em;">
+            Our <code>package.json</code> says React 18, but console 4.19 ships <span class="accent-warm">React 17</span>.
+            <br>The plugin runs on React 17 at runtime.
+          </p>
+          <div class="fragment" style="margin-top: 1em;">
+            <p style="font-size: 0.65em;"><strong class="accent-red">Avoid in plugin code paths:</strong></p>
+            <ul style="font-size: 0.6em;">
+              <li><code>useId()</code>, <code>useDeferredValue()</code>, <code>useTransition()</code></li>
+              <li><code>createRoot()</code> / <code>hydrateRoot()</code></li>
+              <li>Relying on automatic batching behavior</li>
+            </ul>
+          </div>
+          <p class="fragment dim" style="font-size: 0.55em; margin-top: 1em;">
+            Code that runs only in the standalone UI can use React 18 features freely.
+          </p>
+        </section>
+
+        <section>
+          <h3>PatternFly: The CSS Trap</h3>
+          <p style="font-size: 0.65em;">
+            <code>@patternfly/react-core</code> is <strong>not</strong> a shared singleton &mdash;
+            we bundle the JS ourselves. So why does PF version matter?
+          </p>
+          <div class="fragment" style="margin-top: 1em;">
+            <p style="font-size: 0.6em;"><strong class="accent-red">Because of CSS.</strong></p>
+            <ul style="font-size: 0.58em;">
+              <li><code>ConsoleRemotePlugin</code> <strong>aliases all PatternFly CSS to <code>false</code></strong>
+                at build time &mdash; plugins cannot bundle their own PF stylesheets</li>
+              <li>Console loads PatternFly CSS <strong>globally</strong> for all plugins via <code>vendor.scss</code></li>
+              <li>PF5 uses <code>.pf-c-*</code> class names, PF6 uses <code>.pf-v6-c-*</code></li>
+              <li>If our components emit PF5 class names but the console only loads PF6 CSS
+                &rarr; <strong>no matching styles</strong> &rarr; visual breakage</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h3>PatternFly Support Timeline</h3>
+          <table class="version-table" style="margin-top: 0.5em;">
+            <thead>
+              <tr>
+                <th>Console Version</th>
+                <th>PF CSS Loaded</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>4.19 &ndash; 4.21</td>
+                <td>PF6 + PF5 (transitional)</td>
+                <td class="ok">Both class names styled</td>
+              </tr>
+              <tr>
+                <td>4.22+</td>
+                <td>PF6 only</td>
+                <td class="danger">PF5 classes unstyled</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout callout-info" style="margin-top: 1em;">
+            <p style="font-size: 0.55em; margin: 0;">
+              Our app is already fully migrated to PF6 &mdash; we hit this issue during the tech preview
+              on PF5, which is why we had to disable the plugin on OCP &ge;4.22.
+              Eventually the console will move to PF7, and we'll need to plan a migration strategy then.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h3>What's Coming: Console <code>main</code></h3>
+          <table class="version-table">
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>4.19 (current)</th>
+                <th>main (future)</th>
+                <th>Impact on us</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>react</code></td>
+                <td>^17.0.1</td>
+                <td>^18.3.1</td>
+                <td class="accent-green">Aligns with us</td>
+              </tr>
+              <tr>
+                <td><code>redux</code></td>
+                <td>4.0.1</td>
+                <td class="danger">~5.0.1</td>
+                <td class="accent-green">No impact*</td>
+              </tr>
+              <tr>
+                <td><code>react-redux</code></td>
+                <td>7.2.9</td>
+                <td class="danger">~9.2.0</td>
+                <td class="accent-green">No impact*</td>
+              </tr>
+              <tr>
+                <td><code>react-router</code></td>
+                <td>5.3.x</td>
+                <td class="warn">~7.13.1</td>
+                <td class="warn">See next slide</td>
+              </tr>
+              <tr>
+                <td><code>react-i18next</code></td>
+                <td>^11.12.0</td>
+                <td class="warn">~16.5.8</td>
+                <td class="warn">Not used by plugin</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="font-size: 0.5em; margin-top: 0.8em;" class="dim">
+            * Redux and react-redux are not used in any plugin code paths &mdash; all shared
+            components use React Context + Apollo Client for state management.
+          </p>
+        </section>
+
+        <section>
+          <h3>react-router Migration Path</h3>
+          <p style="font-size: 0.65em;">
+            Console <code>main</code> has moved to <code>react-router</code> v7.
+          </p>
+          <ul style="font-size: 0.6em;">
+            <li>The <code>react-router-dom-v5-compat</code> shared module is
+              <strong>aliased to react-router v7</strong> in the latest console</li>
+            <li>This compat layer is expected to remain available through
+              <strong>approximately OCP 5.2</strong></li>
+            <li>Our plugin currently uses <code>react-router-dom-v5-compat</code> for
+              v6-style APIs (<code>useParams</code>, <code>useNavigate</code>)</li>
+            <li>These v6 APIs are forward-compatible with v7, so the migration
+              risk is low</li>
+          </ul>
+          <div class="callout callout-info" style="margin-top: 0.8em;">
+            <p style="font-size: 0.55em; margin: 0;">
+              <strong>Action:</strong> Continue using <code>react-router-dom-v5-compat</code> imports.
+              When the compat shim is removed (~5.2), rename imports to <code>react-router</code>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h3>Compatibility Strategy</h3>
+          <div style="font-size: 0.65em; text-align: left; max-width: 750px; margin: 0 auto;">
+            <p class="fragment fade-in-then-semi-out">
+              <strong class="accent">1. Monitor the source of truth</strong><br>
+              <a href="https://github.com/openshift/console/blob/main/frontend/packages/console-dynamic-plugin-sdk/src/shared-modules/shared-modules-meta.ts" style="font-size: 0.85em;">
+                shared-modules-meta.ts</a>
+              and the
+              <a href="https://github.com/openshift/console/blob/main/frontend/packages/console-dynamic-plugin-sdk/README.md" style="font-size: 0.85em;">
+                SDK README</a>
+              on each release branch.
+            </p>
+            <p class="fragment fade-in-then-semi-out">
+              <strong class="accent">2. SDK version pinning</strong><br>
+              Our SDK is pinned to <code>4.19.0</code>. Upgrading requires testing
+              against the target console version.
+            </p>
+            <p class="fragment fade-in-then-semi-out">
+              <strong class="accent">3. Minimum API version</strong><br>
+              <code>dependencies: { '@console/pluginAPI': '>=4.19.0' }</code><br>
+              Console won't load the plugin if it doesn't satisfy this constraint.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h3>Future Discussions: Planning Ahead</h3>
+          <ul style="font-size: 0.65em;">
+            <li>Planning core dependency upgrades (react-router, PatternFly) around the
+              console's release timeline &mdash; when do we start, how do we phase it?</li>
+            <li>sensor-proxy &harr; Central version skew &mdash; how do we test and guarantee
+              compatibility across releases?</li>
+            <li>New SDK extension types we should adopt?</li>
+          </ul>
+        </section>
+      </section>
+
+      <!-- ==================== WRAP UP ==================== -->
+      <section>
+        <section>
+          <h2>Key Takeaways</h2>
+          <ul style="font-size: 0.7em;">
+            <li>Plugin code is ~2% wrapper, ~98% shared with standalone</li>
+            <li>All traffic goes through sensor-proxy &mdash; SSAR + dynamic access scopes + read-only tokens</li>
+            <li>Console controls shared deps at runtime &mdash; our bundles don't contain them</li>
+            <li>PatternFly CSS is the biggest compat risk &mdash; console blocks plugin PF CSS, loads its own globally</li>
+            <li>Adding features = thin wrapper + webpack config entries</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Resources</h2>
+          <ul style="font-size: 0.6em;">
+            <li><a href="https://github.com/openshift/console/tree/main/frontend/packages/console-dynamic-plugin-sdk">Console Plugin SDK docs</a></li>
+            <li><a href="https://github.com/openshift/console/tree/main/frontend/packages/console-dynamic-plugin-sdk/docs">Extension type reference</a></li>
+            <li><a href="https://github.com/openshift/console/blob/release-4.19/frontend/packages/console-dynamic-plugin-sdk/src/shared-modules/shared-modules-meta.ts">Shared modules (4.19)</a></li>
+            <li><a href="https://github.com/openshift/console-plugin-template">console-plugin-template</a></li>
+            <li><a href="https://webpack.js.org/concepts/module-federation/">Webpack Module Federation docs</a></li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Q&amp;A</h1>
+        </section>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- reveal.js -->
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+
+  <!-- mermaid -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+
+  <script>
+    // Initialize mermaid with dark theme
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#1a1a2e',
+        primaryTextColor: '#e0e0e0',
+        primaryBorderColor: '#5bc0de',
+        lineColor: '#5bc0de',
+        secondaryColor: '#16213e',
+        tertiaryColor: '#0f3460',
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '14px',
+        actorTextColor: '#e0e0e0',
+        actorBorder: '#5bc0de',
+        actorBkg: '#1a1a2e',
+        signalColor: '#e0e0e0',
+        signalTextColor: '#e0e0e0',
+        noteBkgColor: '#16213e',
+        noteTextColor: '#e0e0e0',
+        noteBorderColor: '#5bc0de',
+        activationBorderColor: '#5bc0de',
+        activationBkgColor: '#16213e',
+        sequenceNumberColor: '#5bc0de',
+      },
+      sequence: {
+        actorMargin: 50,
+        messageMargin: 35,
+        boxMargin: 10,
+        useMaxWidth: false,
+        width: 150,
+      },
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: 'basis',
+      },
+    });
+
+    // Render mermaid diagrams
+    async function renderMermaidDiagrams() {
+      const mermaidDivs = document.querySelectorAll('.mermaid pre');
+      for (let i = 0; i < mermaidDivs.length; i++) {
+        const pre = mermaidDivs[i];
+        const code = pre.textContent.trim();
+        const container = pre.parentElement;
+
+        try {
+          const { svg } = await mermaid.render(`mermaid-${i}`, code);
+          container.innerHTML = svg;
+        } catch (e) {
+          console.error('Mermaid render error:', e);
+        }
+      }
+    }
+
+    // Initialize reveal.js
+    Reveal.initialize({
+      hash: true,
+      slideNumber: true,
+      transition: 'slide',
+      transitionSpeed: 'default',
+      center: true,
+      width: 1200,
+      height: 700,
+      margin: 0.08,
+      plugins: [RevealHighlight, RevealNotes],
+    }).then(() => {
+      renderMermaidDiagrams();
+    });
+  </script>
+</body>
+</html>
